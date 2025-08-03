@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Tic Tac Toe - Player vs AI</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(to right, #0f2027, #203a43, #2c5364);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      color: #ffffff;
+      margin: 0;
+    }
+
+    h1 {
+      color: #00e6e6;
+      margin-bottom: 10px;
+    }
+
+    .board {
+      display: grid;
+      grid-template-columns: repeat(3, 100px);
+      gap: 10px;
+      margin: 20px 0;
+    }
+
+    .cell {
+      width: 100px;
+      height: 100px;
+      background: rgba(255, 255, 255, 0.1);
+      color: #00e6e6;
+      font-size: 2.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+
+    .cell:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    .cell.winner {
+      background-color: #00e6e6;
+      color: #000;
+    }
+
+    #result {
+      font-size: 1.3rem;
+      color: #ffd700;
+      min-height: 24px;
+      margin-bottom: 15px;
+    }
+
+    button, select {
+      padding: 10px 20px;
+      font-size: 1rem;
+      background-color: #00e6e6;
+      border: none;
+      color: #000;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: background 0.3s;
+      margin: 5px;
+    }
+
+    button:hover, select:hover {
+      background-color: #00b3b3;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    @media (max-width: 500px) {
+      .board {
+        grid-template-columns: repeat(3, 80px);
+        gap: 8px;
+      }
+
+      .cell {
+        width: 80px;
+        height: 80px;
+        font-size: 2rem;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Tic Tac Toe</h1>
+
+  <div id="player-choice">
+    <p>Select your symbol:</p>
+    <button onclick="startGame('X')">Play as X</button>
+    <button onclick="startGame('O')">Play as O</button>
+  </div>
+
+  <div class="board hidden" id="board">
+    <div class="cell" data-index="0"></div>
+    <div class="cell" data-index="1"></div>
+    <div class="cell" data-index="2"></div>
+    <div class="cell" data-index="3"></div>
+    <div class="cell" data-index="4"></div>
+    <div class="cell" data-index="5"></div>
+    <div class="cell" data-index="6"></div>
+    <div class="cell" data-index="7"></div>
+    <div class="cell" data-index="8"></div>
+  </div>
+
+  <div id="result"></div>
+  <button class="hidden" id="resetBtn" onclick="resetGame()">🔁 Play Again</button>
+
+  <script>
+    const cells = document.querySelectorAll(".cell");
+    const result = document.getElementById("result");
+    const boardDiv = document.getElementById("board");
+    const playerChoice = document.getElementById("player-choice");
+    const resetBtn = document.getElementById("resetBtn");
+
+    let board = Array(9).fill("");
+    let gameOver = false;
+    let player = "X";
+    let ai = "O";
+    let currentPlayer = "X";
+
+    const winPatterns = [
+      [0,1,2],[3,4,5],[6,7,8],
+      [0,3,6],[1,4,7],[2,5,8],
+      [0,4,8],[2,4,6]
+    ];
+
+    function startGame(choice) {
+      player = choice;
+      ai = choice === "X" ? "O" : "X";
+      currentPlayer = "X";
+      playerChoice.classList.add("hidden");
+      boardDiv.classList.remove("hidden");
+      resetBtn.classList.remove("hidden");
+      board = Array(9).fill("");
+      gameOver = false;
+      result.textContent = "";
+      cells.forEach(cell => {
+        cell.textContent = "";
+        cell.classList.remove("winner");
+        cell.addEventListener("click", handleClick);
+      });
+      if (player === "O") aiMove(); // AI starts
+    }
+
+    function handleClick(e) {
+      const index = e.target.dataset.index;
+      if (board[index] || gameOver || currentPlayer !== player) return;
+      makeMove(index, player);
+      if (!gameOver) setTimeout(aiMove, 400);
+    }
+
+    function makeMove(index, symbol) {
+      board[index] = symbol;
+      cells[index].textContent = symbol;
+      if (checkWinner(symbol)) {
+        highlightWinner(symbol);
+        result.textContent = `${symbol} wins!`;
+        gameOver = true;
+        return;
+      } else if (!board.includes("")) {
+        result.textContent = "It's a draw!";
+        gameOver = true;
+        return;
+      }
+      currentPlayer = symbol === "X" ? "O" : "X";
+    }
+
+    function aiMove() {
+      const best = minimax(board, ai);
+      makeMove(best.index, ai);
+    }
+
+    function minimax(newBoard, playerTurn) {
+      const availSpots = newBoard.map((val, i) => val === "" ? i : null).filter(i => i !== null);
+
+      if (checkWinnerMinimax(newBoard, player)) return { score: -10 };
+      if (checkWinnerMinimax(newBoard, ai)) return { score: 10 };
+      if (availSpots.length === 0) return { score: 0 };
+
+      const moves = [];
+
+      for (let i = 0; i < availSpots.length; i++) {
+        let move = {};
+        move.index = availSpots[i];
+        newBoard[availSpots[i]] = playerTurn;
+
+        const result = minimax(newBoard, playerTurn === ai ? player : ai);
+        move.score = result.score;
+
+        newBoard[availSpots[i]] = "";
+        moves.push(move);
+      }
+
+      let bestMove;
+      if (playerTurn === ai) {
+        let bestScore = -Infinity;
+        for (let i = 0; i < moves.length; i++) {
+          if (moves[i].score > bestScore) {
+            bestScore = moves[i].score;
+            bestMove = i;
+          }
+        }
+      } else {
+        let bestScore = Infinity;
+        for (let i = 0; i < moves.length; i++) {
+          if (moves[i].score < bestScore) {
+            bestScore = moves[i].score;
+            bestMove = i;
+          }
+        }
+      }
+
+      return moves[bestMove];
+    }
+
+    function checkWinner(symbol) {
+      return winPatterns.some(pattern =>
+        pattern.every(index => board[index] === symbol)
+      );
+    }
+
+    function checkWinnerMinimax(b, symbol) {
+      return winPatterns.some(pattern =>
+        pattern.every(index => b[index] === symbol)
+      );
+    }
+
+    function highlightWinner(symbol) {
+      winPatterns.forEach(pattern => {
+        if (pattern.every(i => board[i] === symbol)) {
+          pattern.forEach(i => cells[i].classList.add("winner"));
+        }
+      });
+    }
+
+    function resetGame() {
+      playerChoice.classList.remove("hidden");
+      boardDiv.classList.add("hidden");
+      resetBtn.classList.add("hidden");
+      board = Array(9).fill("");
+      gameOver = false;
+      result.textContent = "";
+      cells.forEach(cell => {
+        cell.textContent = "";
+        cell.classList.remove("winner");
+        cell.removeEventListener("click", handleClick);
+      });
+    }
+  </script>
+</body>
+</html>
